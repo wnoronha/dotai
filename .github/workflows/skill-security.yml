@@ -14,7 +14,7 @@ permissions:
 jobs:
   skill-scan:
     name: skill supply-chain scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       security-events: write # for SARIF upload to Security tab
@@ -37,7 +37,7 @@ jobs:
 
   secret-scan:
     name: secrets (gitleaks)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
         with:
@@ -52,7 +52,7 @@ jobs:
 
   shell-audit:
     name: shell audit (shellcheck)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       security-events: write # for SARIF upload to Security tab
@@ -85,7 +85,7 @@ jobs:
 
   workflow-audit:
     name: action config audit (zizmor)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       security-events: write # zizmor uploads to Advanced Security by default
