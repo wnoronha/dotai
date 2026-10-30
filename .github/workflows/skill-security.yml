@@ -1,0 +1,97 @@
+name: skill-security
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  schedule:
+    - cron: "0 6 * * 1" # weekly Monday
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  skill-scan:
+    name: skill supply-chain scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # for SARIF upload to Security tab
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Run skill scanner (fails on HIGH, writes SARIF)
+        run: python3 scripts/security/scan-skills.py --root . --sarif-out skill-scan.sarif
+      - name: Upload skill-scan SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: skill-scan.sarif
+          category: skill-scan
+
+  secret-scan:
+    name: secrets (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Gitleaks uploads a SARIF artifact and comments on PRs by default
+        # (GITLEAKS_ENABLE_UPLOAD_ARTIFACT=true). No code-scanning upload:
+        # upstream discourages it (removed leaks would show as resolved).
+
+  shell-audit:
+    name: shell audit (shellcheck)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # for SARIF upload to Security tab
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: shellcheck scripts
+        uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          scandir: "./scripts"
+          severity: warning
+      - name: shellcheck SARIF
+        if: always()
+        run: |
+          command -v shellcheck >/dev/null || sudo apt-get install -y shellcheck
+          shellcheck --version
+          shellcheck -f sarif -S warning scripts/install scripts/pre-push > shellcheck.sarif || true
+          ls -la shellcheck.sarif
+      - name: Upload shellcheck SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: shellcheck.sarif
+          category: shellcheck
+
+  workflow-audit:
+    name: action config audit (zizmor)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # zizmor uploads to Advanced Security by default
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: zizmor
+        uses: zizmorcore/zizmor-action@v0.8.0
+        with:
+          persona: pedantic
+        # advanced-security: true is the default: findings go straight
+        # to the Security tab, no extra upload step needed.
