@@ -10,16 +10,21 @@
 	```sh
 	ln -s ~/workspace/dotai ~/.dotai
 	```
-3. Confirm the layout.
+3. Install into each project that needs the stack. From the project root:
 	```sh
-	ls ~/.dotai/skills | wc -l
-	ls ~/.dotai/agents ~/.dotai/scripts
+	~/.dotai/scripts/install .
 	```
-4. Point your harness at the checkout so it loads `skills/*/SKILL.md` and `agents/*.md` by name.
-5. Open a `poteto-mode` session in any repo you work in. Session start installs the `pre-push` guard into that repo on its own. To cover every repo at once instead, do this one time:
+	The installer detects the harnesses the project uses and symlinks skills into `.agents/skills/` (cursor, codex, opencode) and `.claude/skills/` (claude), agents into the matching `agents/` dirs, and the `pre-push` guard into `.git/hooks/`. Symlinked dirs are appended to the project `.gitignore`. Nothing installs globally.
+4. Confirm what loaded.
 	```sh
-	mkdir -p ~/.dotai/githooks
-	cp ~/.dotai/scripts/pre-push ~/.dotai/githooks/pre-push
-	git config --global core.hooksPath ~/.dotai/githooks
+	ls .agents/skills/ .claude/skills/ 2>/dev/null
 	```
-	Skip the global step if you keep other per-repo hooks. It overrides them.
+
+## Variants
+
+- Preview first: add `--dry-run`.
+- One harness only: `--only claude`.
+- Every harness: `--all`.
+- Vendor instead of symlink (teammates without your checkout): `--copy`. Copied files are meant to be committed, so no gitignore entry is added.
+- Remove: `scripts/install . --uninstall`. Only symlinks it owns go quietly.
+- Flag list: `scripts/install --help`.

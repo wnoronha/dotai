@@ -1,0 +1,187 @@
+#!/bin/bash
+# Install the dotai stack into one project (symlink by default, nothing global).
+# Only projects you run this in load the stack.
+#
+# Usage: scripts/install [project-dir] [--all] [--only h1,h2] [--copy] [--dry-run] [--no-hook] [--no-gitignore] [--uninstall] [--force]
+#
+#   project-dir   Target project. Defaults to the current directory.
+#   (no flags)    Install for harnesses the project already uses (detected
+#                 from .claude, .cursor, .codex, .opencode, .agents markers).
+#   --all         Install for every supported harness.
+#   --only h,...  Limit to claude, cursor, codex, opencode, antigravity.
+#   --copy        Copy files instead of symlinking. Use for machines without
+#                 your dotai checkout (teammates). Copied files are meant to
+#                 be committed; symlinks are gitignored.
+#   --dry-run     Print actions without running them.
+#   --no-hook     Skip the pre-push guard install.
+#   --no-gitignore
+#                 Skip appending linked dirs to the project .gitignore.
+#   --uninstall   Remove what install created. Symlinks it owns go quietly;
+#                 real files need --force.
+#   --force       Replace existing real files at target paths.
+#
+# Layout: .agents/skills is the universal path (cursor, codex, opencode and
+# others read it). Claude Code is the exception: .claude/skills only.
+# Agents go per harness (.claude/agents, .cursor/agents, .codex/agents,
+# .opencode/agents). Reruns are safe: current links stay, stale ones refresh.
+set -euo pipefail
+
+DOTAI="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+REPO="." ALL=0 ONLY="" COPY=0 DRY_RUN=0 HOOK=1 GITIGNORE=1 UNINSTALL=0 FORCE=0
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --all) ALL=1 ;;
+    --only=*) ONLY="${1#--only=}" ;;
+    --only) ONLY="$2"; shift ;;
+    --copy) COPY=1 ;;
+    --dry-run) DRY_RUN=1 ;;
+    --no-hook) HOOK=0 ;;
+    --no-gitignore) GITIGNORE=0 ;;
+    --uninstall) UNINSTALL=1 ;;
+    --force) FORCE=1 ;;
+    -h|--help) sed -n '2,/^$/p' "$0" | sed 's/^# \?//'; exit 0 ;;
+    -*) echo "unknown flag: $1" >&2; exit 1 ;;
+    *) REPO="$1" ;;
+  esac
+  shift
+done
+
+[ -d "$REPO" ] || { echo "Not a directory: $REPO" >&2; exit 1; }
+[ -d "$DOTAI/skills" ] || { echo "No skills/ under $DOTAI" >&2; exit 1; }
+
+run() { if [ "$DRY_RUN" -eq 1 ]; then echo "would run: $*"; else "$@"; fi; }
+
+detect() {
+  local dir="$1" out=""
+  { [ -d "$dir/.claude" ] || [ -f "$dir/CLAUDE.md" ]; } && out="$out claude"
+  [ -d "$dir/.cursor" ] && out="$out cursor"
+  [ -d "$dir/.codex" ] && out="$out codex"
+  { [ -d "$dir/.opencode" ] || [ -f "$dir/opencode.json" ]; } && out="$out opencode"
+  { [ -d "$dir/.agents" ] || [ -f "$dir/GEMINI.md" ]; } && out="$out antigravity"
+  echo "$out"
+}
+
+skill_dir() {
+  case "$1" in
+    claude) echo "$REPO/.claude/skills" ;;
+    *) echo "$REPO/.agents/skills" ;;
+  esac
+}
+
+agent_dir() {
+  case "$1" in
+    claude) echo "$REPO/.claude/agents" ;;
+    cursor) echo "$REPO/.cursor/agents" ;;
+    codex) echo "$REPO/.codex/agents" ;;
+    opencode) echo "$REPO/.opencode/agents" ;;
+    antigravity) echo "" ;;
+  esac
+}
+
+if [ -n "$ONLY" ]; then SELECTED="${ONLY//,/ }"; elif [ "$ALL" -eq 1 ]; then SELECTED="claude cursor codex opencode antigravity"; else SELECTED="$(detect "$REPO")"; fi
+for h in $SELECTED; do
+  case "$h" in claude|cursor|codex|opencode|antigravity) ;; *) echo "unknown harness: $h" >&2; exit 1 ;; esac
+done
+
+if [ -z "$SELECTED" ]; then echo "no harness dirs found in $REPO; rerun with --all" >&2; exit 1; fi
+
+place_one() {
+  local src="$1" dst="$2"
+  if [ -L "$dst" ]; then
+    if [ "$(readlink "$dst")" = "$src" ]; then echo "  keep $dst"; return 0; fi
+    run rm "$dst"
+  elif [ -e "$dst" ]; then
+    if [ "$FORCE" -eq 1 ]; then run rm -rf "$dst";
+    else echo "  BLOCKED: $dst (real file exists; --force to replace)"; return 0; fi
+  fi
+  if [ "$COPY" -eq 1 ]; then run cp -r "$src" "$dst"; else run ln -s "$src" "$dst"; fi
+  if [ "$DRY_RUN" -eq 1 ]; then echo "  would link $dst";
+  elif [ "$COPY" -eq 1 ]; then echo "  copied $dst"; else echo "  linked $dst"; fi
+}
+
+remove_one() {
+  local dst="$1"
+  if [ -L "$dst" ]; then run rm "$dst";
+    if [ "$DRY_RUN" -eq 1 ]; then echo "  would remove $dst"; else echo "  removed $dst"; fi;
+  elif [ -e "$dst" ]; then
+    if [ "$FORCE" -eq 1 ]; then run rm -rf "$dst"; echo "  removed $dst (--force)";
+    else echo "  keep $dst (real file; --force to remove)"; fi
+  fi
+}
+
+LINKED_DIRS=""
+install_all() {
+  for h in $SELECTED; do
+    dest="$(skill_dir "$h")"
+    run mkdir -p "$dest"
+    LINKED_DIRS="$LINKED_DIRS $dest"
+    for skill in "$DOTAI"/skills/*/; do
+      place_one "$DOTAI/skills/$(basename "$skill")" "$dest/$(basename "$skill")"
+    done
+    adest="$(agent_dir "$h")"
+    if [ -n "$adest" ]; then
+      run mkdir -p "$adest"
+      LINKED_DIRS="$LINKED_DIRS $adest"
+      for agent in "$DOTAI"/agents/*.md; do
+        place_one "$DOTAI/agents/$(basename "$agent")" "$adest/$(basename "$agent")"
+      done
+    fi
+  done
+}
+
+uninstall_all() {
+  for h in $SELECTED; do
+    dest="$(skill_dir "$h")"
+    for skill in "$DOTAI"/skills/*/; do remove_one "$dest/$(basename "$skill")"; done
+    rmdir "$dest" 2>/dev/null || true
+    adest="$(agent_dir "$h")"
+    if [ -n "$adest" ]; then
+      for agent in "$DOTAI"/agents/*.md; do remove_one "$adest/$(basename "$agent")"; done
+      rmdir "$adest" 2>/dev/null || true
+    fi
+  done
+}
+
+gitignore_linked() {
+  for d in $LINKED_DIRS; do
+    rel="${d#$REPO/}"
+    if ! { [ -f "$REPO/.gitignore" ] && grep -qxF "$rel/" "$REPO/.gitignore"; }; then
+      if [ "$DRY_RUN" -eq 1 ]; then echo "would run: append $rel/ to $REPO/.gitignore";
+      else echo "$rel/" >> "$REPO/.gitignore"; echo "  gitignored $rel/"; fi
+    fi
+  done
+}
+
+install_hook() {
+  [ -e "$REPO/.git" ] || { echo "  skip hook (not a git repo)"; return 0; }
+  if [ -f "$REPO/.git/hooks/pre-push" ] && cmp -s "$REPO/.git/hooks/pre-push" "$DOTAI/scripts/pre-push"; then
+    echo "  keep $REPO/.git/hooks/pre-push"
+  else
+    run cp "$DOTAI/scripts/pre-push" "$REPO/.git/hooks/pre-push"
+    run chmod +x "$REPO/.git/hooks/pre-push"
+    echo "  installed $REPO/.git/hooks/pre-push"
+  fi
+}
+
+uninstall_hook() {
+  if [ -f "$REPO/.git/hooks/pre-push" ] && cmp -s "$REPO/.git/hooks/pre-push" "$DOTAI/scripts/pre-push" 2>/dev/null; then
+    run rm "$REPO/.git/hooks/pre-push"
+    echo "  removed $REPO/.git/hooks/pre-push"
+  else
+    echo "  keep $REPO/.git/hooks/pre-push (not ours)"
+  fi
+}
+
+if [ "$UNINSTALL" -eq 1 ]; then
+  echo "Uninstalling from $REPO"
+  uninstall_all
+  [ "$HOOK" -eq 1 ] && uninstall_hook
+else
+  if [ "$COPY" -eq 1 ]; then echo "Installing (copy) into $REPO from $DOTAI";
+  else echo "Installing (link) into $REPO from $DOTAI"; fi
+  install_all
+  if [ "$COPY" -eq 0 ] && [ "$GITIGNORE" -eq 1 ]; then gitignore_linked; fi
+  [ "$HOOK" -eq 1 ] && install_hook
+fi
+echo "Done."
