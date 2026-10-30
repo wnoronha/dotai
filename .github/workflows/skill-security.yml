@@ -70,10 +70,14 @@ jobs:
         run: |
           command -v shellcheck >/dev/null || sudo apt-get install -y shellcheck
           shellcheck --version
-          shellcheck -f sarif -S warning scripts/install scripts/pre-push > shellcheck.sarif || true
-          ls -la shellcheck.sarif
+          if shellcheck -f sarif scripts/pre-push >/dev/null 2>&1; then
+            shellcheck -f sarif -S warning scripts/install scripts/pre-push > shellcheck.sarif || true
+            ls -la shellcheck.sarif
+          else
+            echo "runner shellcheck lacks sarif format; skipping SARIF (annotations above are the signal)"
+          fi
       - name: Upload shellcheck SARIF
-        if: always()
+        if: always() && hashFiles('shellcheck.sarif') != ''
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: shellcheck.sarif

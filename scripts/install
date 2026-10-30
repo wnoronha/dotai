@@ -26,7 +26,8 @@
 # .opencode/agents). Reruns are safe: current links stay, stale ones refresh.
 set -euo pipefail
 
-DOTAI="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+# CDPATH='' is an intentional temporary env assignment so cd ignores CDPATH.
+DOTAI="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
 REPO="." ALL=0 ONLY="" COPY=0 DRY_RUN=0 HOOK=1 GITIGNORE=1 UNINSTALL=0 FORCE=0
 
 while [ $# -gt 0 ]; do

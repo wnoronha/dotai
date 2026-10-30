@@ -8,6 +8,7 @@
 zero="0000000000000000000000000000000000000000"
 blocked=0
 
+# shellcheck disable=SC2034 # remote_ref keeps the hook's field order explicit; the logic needs only remote_sha.
 while read -r local_ref local_sha remote_ref remote_sha; do
   if [ "$local_sha" = "$zero" ]; then
     continue
