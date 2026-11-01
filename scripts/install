@@ -51,6 +51,19 @@ done
 [ -d "$REPO" ] || { echo "Not a directory: $REPO" >&2; exit 1; }
 [ -d "$DOTAI/skills" ] || { echo "No skills/ under $DOTAI" >&2; exit 1; }
 
+REPO="${REPO%/}"
+[ -z "$REPO" ] && REPO="/"
+
+# Strip a leading "./" for display only; filesystem paths keep working as-is.
+disp() {
+  local p="$1"
+  case "$p" in
+    .//*) p="${p#./}" ;;
+    ./*) p="${p#./}" ;;
+  esac
+  echo "$p"
+}
+
 run() { if [ "$DRY_RUN" -eq 1 ]; then echo "would run: $*"; else "$@"; fi; }
 
 detect() {
@@ -64,18 +77,20 @@ detect() {
 }
 
 skill_dir() {
+  local prefix=""; [ "$REPO" != "." ] && prefix="${REPO%/}/"
   case "$1" in
-    claude) echo "$REPO/.claude/skills" ;;
-    *) echo "$REPO/.agents/skills" ;;
+    claude) echo "${prefix}.claude/skills" ;;
+    *) echo "${prefix}.agents/skills" ;;
   esac
 }
 
 agent_dir() {
+  local prefix=""; [ "$REPO" != "." ] && prefix="${REPO%/}/"
   case "$1" in
-    claude) echo "$REPO/.claude/agents" ;;
-    cursor) echo "$REPO/.cursor/agents" ;;
-    codex) echo "$REPO/.codex/agents" ;;
-    opencode) echo "$REPO/.opencode/agents" ;;
+    claude) echo "${prefix}.claude/agents" ;;
+    cursor) echo "${prefix}.cursor/agents" ;;
+    codex) echo "${prefix}.codex/agents" ;;
+    opencode) echo "${prefix}.opencode/agents" ;;
     antigravity) echo "" ;;
   esac
 }
@@ -88,26 +103,28 @@ done
 if [ -z "$SELECTED" ]; then echo "no harness dirs found in $REPO; rerun with --all" >&2; exit 1; fi
 
 place_one() {
-  local src="$1" dst="$2"
+  local src="$1" dst="$2" ddst
+  ddst="$(disp "$dst")"
   if [ -L "$dst" ]; then
-    if [ "$(readlink "$dst")" = "$src" ]; then echo "  keep $dst"; return 0; fi
+    if [ "$(readlink "$dst")" = "$src" ]; then echo "  keep $ddst"; return 0; fi
     run rm "$dst"
   elif [ -e "$dst" ]; then
     if [ "$FORCE" -eq 1 ]; then run rm -rf "$dst";
-    else echo "  BLOCKED: $dst (real file exists; --force to replace)"; return 0; fi
+    else echo "  BLOCKED: $ddst (real file exists; --force to replace)"; return 0; fi
   fi
   if [ "$COPY" -eq 1 ]; then run cp -r "$src" "$dst"; else run ln -s "$src" "$dst"; fi
-  if [ "$DRY_RUN" -eq 1 ]; then echo "  would link $dst";
-  elif [ "$COPY" -eq 1 ]; then echo "  copied $dst"; else echo "  linked $dst"; fi
+  if [ "$DRY_RUN" -eq 1 ]; then echo "  would link $ddst";
+  elif [ "$COPY" -eq 1 ]; then echo "  copied $ddst"; else echo "  linked $ddst"; fi
 }
 
 remove_one() {
-  local dst="$1"
+  local dst="$1" ddst
+  ddst="$(disp "$dst")"
   if [ -L "$dst" ]; then run rm "$dst";
-    if [ "$DRY_RUN" -eq 1 ]; then echo "  would remove $dst"; else echo "  removed $dst"; fi;
+    if [ "$DRY_RUN" -eq 1 ]; then echo "  would remove $ddst"; else echo "  removed $ddst"; fi;
   elif [ -e "$dst" ]; then
-    if [ "$FORCE" -eq 1 ]; then run rm -rf "$dst"; echo "  removed $dst (--force)";
-    else echo "  keep $dst (real file; --force to remove)"; fi
+    if [ "$FORCE" -eq 1 ]; then run rm -rf "$dst"; echo "  removed $ddst (--force)";
+    else echo "  keep $ddst (real file; --force to remove)"; fi
   fi
 }
 
@@ -146,9 +163,9 @@ uninstall_all() {
 
 gitignore_linked() {
   for d in $LINKED_DIRS; do
-    rel="${d#$REPO/}"
+    if [ "$REPO" = "." ]; then rel="$d"; else rel="${d#${REPO%/}/}"; fi
     if ! { [ -f "$REPO/.gitignore" ] && grep -qxF "$rel/" "$REPO/.gitignore"; }; then
-      if [ "$DRY_RUN" -eq 1 ]; then echo "would run: append $rel/ to $REPO/.gitignore";
+      if [ "$DRY_RUN" -eq 1 ]; then echo "would run: append $rel/ to $(disp "$REPO/.gitignore")";
       else echo "$rel/" >> "$REPO/.gitignore"; echo "  gitignored $rel/"; fi
     fi
   done
@@ -157,30 +174,30 @@ gitignore_linked() {
 install_hook() {
   [ -e "$REPO/.git" ] || { echo "  skip hook (not a git repo)"; return 0; }
   if [ -f "$REPO/.git/hooks/pre-push" ] && cmp -s "$REPO/.git/hooks/pre-push" "$DOTAI/scripts/pre-push"; then
-    echo "  keep $REPO/.git/hooks/pre-push"
+    echo "  keep $(disp "$REPO/.git/hooks/pre-push")"
   else
     run cp "$DOTAI/scripts/pre-push" "$REPO/.git/hooks/pre-push"
     run chmod +x "$REPO/.git/hooks/pre-push"
-    echo "  installed $REPO/.git/hooks/pre-push"
+    echo "  installed $(disp "$REPO/.git/hooks/pre-push")"
   fi
 }
 
 uninstall_hook() {
   if [ -f "$REPO/.git/hooks/pre-push" ] && cmp -s "$REPO/.git/hooks/pre-push" "$DOTAI/scripts/pre-push" 2>/dev/null; then
     run rm "$REPO/.git/hooks/pre-push"
-    echo "  removed $REPO/.git/hooks/pre-push"
+    echo "  removed $(disp "$REPO/.git/hooks/pre-push")"
   else
-    echo "  keep $REPO/.git/hooks/pre-push (not ours)"
+    echo "  keep $(disp "$REPO/.git/hooks/pre-push") (not ours)"
   fi
 }
 
 if [ "$UNINSTALL" -eq 1 ]; then
-  echo "Uninstalling from $REPO"
+  echo "Uninstalling from $(disp "$REPO")"
   uninstall_all
   [ "$HOOK" -eq 1 ] && uninstall_hook
 else
-  if [ "$COPY" -eq 1 ]; then echo "Installing (copy) into $REPO from $DOTAI";
-  else echo "Installing (link) into $REPO from $DOTAI"; fi
+  if [ "$COPY" -eq 1 ]; then echo "Installing (copy) into $(disp "$REPO") from $DOTAI";
+  else echo "Installing (link) into $(disp "$REPO") from $DOTAI"; fi
   install_all
   if [ "$COPY" -eq 0 ] && [ "$GITIGNORE" -eq 1 ]; then gitignore_linked; fi
   [ "$HOOK" -eq 1 ] && install_hook
