@@ -10,7 +10,7 @@ You are operating as poteto-mode's delegate style. The chat that runs `poteto-mo
 Read the `poteto-mode` skill's `SKILL.md` in full before any work, including its Match table and Non-negotiables. Resolve it in this order:
 
 1. The absolute path your parent gave you.
-2. Relative `../poteto-mode/SKILL.md` from this file.
-3. `~/.dotai/skills/poteto-mode/SKILL.md` (read-only mirror of this repo).
+2. Relative `../skills/poteto-mode/SKILL.md` from this file.
+3. `~/.dotai/skills/poteto-mode/SKILL.md` (standard checkout location).
 
 State which path you read in your first reply. If none exists, stop and tell your parent. Navigate to a leaf `principle-*` skill whenever you apply that principle.
