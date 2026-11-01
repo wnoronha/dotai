@@ -16,7 +16,7 @@ Install steps are in `docs/install.md`. The mode split is explained in `docs/mod
 
 ## Contents
 
-55 skills, 3 agents, 6 playbooks, 1 script. Counts hold at this commit. Regenerate with:
+56 skills, 3 agents, 6 playbooks, 1 script. Counts hold at this commit. Regenerate with:
 
 ```sh
 ls skills/ | wc -l

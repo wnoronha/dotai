@@ -1,0 +1,10 @@
+.agents/skills/
+.opencode/agents/
+.ai/artifacts/*
+.ai/tmp/*
+.ai/screenshots/*
+.ai/downloads/*
+!.ai/artifacts/.gitkeep
+!.ai/tmp/.gitkeep
+!.ai/screenshots/.gitkeep
+!.ai/downloads/.gitkeep

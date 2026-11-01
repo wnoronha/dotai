@@ -20,6 +20,7 @@ Match the task, own the todos, enforce the non-negotiables. You lead; delegates 
 | No playbook fits, design the workflow | `figure-it-out` |
 | Deepen the prompt before spending tokens | `sharpen` |
 | Break this change or design, prove it | `interrogate` |
+| Check a TLA+ model, chart bugs as paths | `statechart` |
 | Prove a claim with fresh evidence | `verify-this` |
 | Failing test first for a bug fix | `tdd` |
 | Vet a perf number before reporting it | `benchmark-checklist` |

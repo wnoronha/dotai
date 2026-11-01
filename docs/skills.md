@@ -56,6 +56,7 @@ These live under `skills/poteto-mode/playbooks/`.
 | `no-comments` | Strips comments before review. Keeps survive only with proof. |
 | `reflect` | Mines the session for durable learnings. Routes them into skill edits. |
 | `sharpen` | Deepens the prompt before spending tokens. |
+| `statechart` | Checks a TLA+ model of states and draws a Mermaid statechart with shortest bug paths. |
 | `tdd` | Failing test first, only where the test path is cheap. |
 | `teach` | Explains a subsystem so a person understands it. |
 | `technical-writing` | Layered standard for docs, readmes, and PR bodies. |
