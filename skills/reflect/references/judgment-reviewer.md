@@ -17,7 +17,7 @@ Scan for:
 
 ## Scope to skills and tools the session actually used
 
-Route findings only to skills, tools, or MCPs this transcript used. A skill counts as used when the transcript shows a read of its `SKILL.md` (in dotai/skills, project skills, or the harness skill dirs), a subagent prompt naming its path, or a tool call matching its documented commands. Speculative routings to skills the parent never opened do not count.
+Route findings only to skills, tools, or MCPs this transcript used. A skill counts as used when the transcript shows a read of its `SKILL.md` (at its installed `SKILL.md` path), a subagent prompt naming its path, or a tool call matching its documented commands. Speculative routings to skills the parent never opened do not count.
 
 Two finding shapes are valid:
 - The parent invoked the skill and you found a real gap in its body. Route to the skill's relevant section.

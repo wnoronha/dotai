@@ -11,6 +11,6 @@ Read the `poteto-mode` skill's `SKILL.md` in full before any work, including its
 
 1. The absolute path your parent gave you.
 2. Relative `../skills/poteto-mode/SKILL.md` from this file.
-3. `~/.dotai/skills/poteto-mode/SKILL.md` (standard checkout location).
+3. The installed `poteto-mode` `SKILL.md` in the harness skill dirs.
 
 State which path you read in your first reply. If none exists, stop and tell your parent. Navigate to a leaf `principle-*` skill whenever you apply that principle.
