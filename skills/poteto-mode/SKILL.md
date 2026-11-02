@@ -65,7 +65,7 @@ Give new work to a fresh subagent with consolidated scope: original brief, later
 
 ## Session start
 
-1. Ensure the `wip:` guard: if `.git/hooks/pre-push` is missing or differs from the template (`scripts/pre-push` in the `dotai` checkout, fallback `~/.dotai/scripts/pre-push`), copy it over and `chmod +x`. Repo-local only; never touch global git config without asking.
+1. Ensure the `wip:` guard: if `.git/hooks/pre-push` is missing or differs from the template (the `scripts/pre-push` template shipped with this stack, resolved from the same source this skill was loaded from), copy it over and `chmod +x`. Repo-local only; never touch global git config without asking.
 2. Read the newest `wip:` commit on the current branch (`git log --oneline -5`, then `git show <sha> --stat`).
 3. Verify state: `git status --short` is clean and the tree matches the note.
 4. Open todos from the note's next step. Route to the matching playbook.
