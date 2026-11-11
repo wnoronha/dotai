@@ -24,7 +24,7 @@ command -v tmux >/dev/null || { echo "tmux not installed"; exit 1; }
 
 Run drives from the project directory (`-c` on `new-session`). Export env vars the app needs before `send-keys`.
 
-Prefer the **harness script** (dedicated socket, one-liners, watch command) over raw `tmux` when available — see [Utility script](#utility-script).
+Default path: resolve `$HARNESS` (see [Utility script](#utility-script)) and run the **Agent flow** there. That keeps sessions on `HARNESS_TMUX_SOCKET`, not the user's default tmux server.
 
 ## Lifecycle
 
@@ -32,89 +32,27 @@ Copy and track:
 
 ```text
 Harness progress:
-- [ ] Create detached session
-- [ ] Start process / REPL
-- [ ] Wait until ready
-- [ ] Send input and capture output
-- [ ] Kill session (even on failure)
+- [ ] Resolve $HARNESS (Utility script)
+- [ ] new SLUG → SESSION
+- [ ] run START_CMD
+- [ ] wait for readiness pattern
+- [ ] send / cap as needed
+- [ ] kill SESSION (even on failure)
 ```
 
-### 1. Create
-
-```bash
-SESSION="harness-${SLUG:-drive}-$$"
-WORKDIR="${WORKDIR:-$PWD}"
-
-tmux new-session -d -s "$SESSION" -c "$WORKDIR"
-export SESSION WORKDIR
-```
-
-Record `SESSION` in the agent's notes for this task so later steps target the same session.
-
-### 2. Start
-
-```bash
-tmux send-keys -t "$SESSION" "${START_CMD}" Enter
-```
-
-Examples: `npm run dev`, `./bin/app serve`, `python -m mypkg.cli`.
-
-For a shell already waiting at a prompt, send the command only after the pane shows an idle prompt (see readiness).
-
-### 3. Readiness
-
-Poll with bounded timeout (default 120s):
-
-```bash
-READY_PATTERN='Listening on|ready in|>>> '
-DEADLINE=$((SECONDS + 120))
-
-while (( SECONDS < DEADLINE )); do
-  pane="$(tmux capture-pane -pt "$SESSION" -S -300)"
-  if printf '%s' "$pane" | grep -qE "$READY_PATTERN"; then
-    break
-  fi
-  sleep 1
-done
-
-printf '%s\n' "$pane"   # keep as evidence
-```
-
-If the pattern never matches, capture the full pane, kill the session, and report `INCONCLUSIVE` or failure with transcript excerpt.
-
-### 4. Interact
-
-```bash
-tmux send-keys -t "$SESSION" 'subcommand arg' Enter
-tmux send-keys -t "$SESSION" C-c              # interrupt
-tmux send-keys -t "$SESSION" C-d              # EOF / exit some REPLs
-tmux send-keys -t "$SESSION" -- 'text with spaces'
-```
-
-After each meaningful step:
-
-```bash
-tmux capture-pane -pt "$SESSION" -S -500
-```
-
-For TUIs that redraw (curses), capture **after** a short settle (`sleep 0.3`) if output looks truncated.
-
-### 5. Teardown
-
-Always run on success, failure, or abort:
-
-```bash
-tmux kill-session -t "$SESSION" 2>/dev/null || true
-unset SESSION
-```
+Record `SESSION` in the agent's notes for this task so later steps target the same session. Map each step to `"$HARNESS" new|run|wait|cap|send|kill` in the Utility script section.
 
 Do not kill by broad `pkill node` / `pkill python` unless the verify skill explicitly requires it and documents port ownership.
 
+### Fallback (no harness script)
+
+Only if the script is missing and cannot be installed from dotai: every `tmux` command must use the harness socket, e.g. `tmux -S "$HARNESS_TMUX_SOCKET" …`. Without `-S`, sessions attach to the user's personal tmux and violate the principles above. See [references/tmux-cli.md](references/tmux-cli.md) for flags.
+
 ## Session targeting
 
-- Prefer `-t "$SESSION"` (session name).
-- Multiple windows: `tmux new-window -t "$SESSION" -n shell` then `-t "$SESSION:shell"`.
-- List only harness sessions: `tmux list-sessions | grep '^harness-'` before cleaning stale runs.
+- Prefer `-t "$SESSION"` on the harness socket via `"$HARNESS"` or `tmux -S "$HARNESS_TMUX_SOCKET"`.
+- Multiple windows: `new-window` on that same socket target.
+- List harness sessions: `"$HARNESS" ls`.
 
 ## When to use something else
 

@@ -48,6 +48,7 @@ These live under `skills/poteto-mode/playbooks/`.
 | `architect` | Types and module shape before code. |
 | `benchmark-checklist` | Vets a perf number before you report it. |
 | `blast-radius` | Finds what a change could break beyond the diff. |
+| `agent-browser` | Headless browser automation CLI (CDP); stub routes to the installed CLI manual. |
 | `cli-for-agents` | Designs CLIs that agents can run headlessly. |
 | `correct` | Makes a repeated mistake impossible through structure. |
 | `figure-it-out` | Designs a bespoke playbook when none fits. |
@@ -61,9 +62,29 @@ These live under `skills/poteto-mode/playbooks/`.
 | `tdd` | Failing test first, only where the test path is cheap. |
 | `teach` | Explains a subsystem so a person understands it. |
 | `technical-writing` | Layered standard for docs, readmes, and PR bodies. |
+| `tmux` | Isolated tmux socket harness for interactive CLI/TUI drives and transcripts. |
 | `unslop` | Removes AI tells from writing. |
 | `verify-this` | Verifies a claim with fresh evidence. Returns a verdict. |
 | `why` | Design rationale from parallel evidence queries. |
+
+## Verification
+
+**Behavioral** (drive the app like a user; output is project-local `verify-*` skills):
+
+| Name | Purpose |
+|---|---|
+| `create-verification-skill` | Generates a project verify skill + seeded feature map. |
+| `maintain-verification-skill` | Audits an existing verify skill and feature map against the live app. |
+
+**Formal** (models, invariants, TLA+; output is project-local `verify-*` skills per subsystem):
+
+| Name | Purpose |
+|---|---|
+| `create-formal-verification-skill` | Picks a high-risk area, writes a formal check, leaves a project verify skill. |
+| `maintain-formal-verification-skill` | Re-syncs formal verification after code drift; separates bug vs model drift. |
+| `statechart` | Runs TLA+ checks and draws Mermaid statecharts with shortest violation paths. |
+
+Typical formal flow: `/create-formal-verification-skill` → project `verify-<subsystem>` → `/statechart` on the `.tla` → fix → `/maintain-formal-verification-skill` after refactors.
 
 ## Review bundle
 
