@@ -53,6 +53,7 @@ These live under `skills/poteto-mode/playbooks/`.
 | `figure-it-out` | Designs a bespoke playbook when none fits. |
 | `how` | How a subsystem works and where code should live. |
 | `interrogate` | Adversarial review. Only findings proven by a run survive. |
+| `likec4` | LikeC4 DSL and CLI: validate, views, deployment, predicates, strict snippet answers. |
 | `no-comments` | Strips comments before review. Keeps survive only with proof. |
 | `reflect` | Mines the session for durable learnings. Routes them into skill edits. |
 | `sharpen` | Deepens the prompt before spending tokens. |
